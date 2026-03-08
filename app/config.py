@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # Sync
     sync_interval: int = 30
 
+    # Generic message forwarding — all incoming room messages are POSTed here.
+    # Leave empty to disable. The receiving service (e.g. n8n) decides what to do.
+    message_webhook_url: Optional[str] = None
+
     @field_validator("matrix_homeserver")
     @classmethod
     def validate_homeserver(cls, v: str) -> str:

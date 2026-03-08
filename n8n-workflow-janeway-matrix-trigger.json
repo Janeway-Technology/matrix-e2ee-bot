@@ -1,0 +1,208 @@
+{
+  "name": "Janeway Matrix Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "matrix-messages",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Matrix Message Received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "id": "respond-immediately",
+      "name": "Respond 200 immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body?.trim() ?? '';\nconst lower = body.toLowerCase();\n\nconst commands = ['apex', 'sentinel', 'cortex'];\nlet command = null;\nlet question = null;\n\nfor (const cmd of commands) {\n  for (const prefix of [`!${cmd}`, `/${cmd}`]) {\n    if (lower.startsWith(prefix)) {\n      command = cmd;\n      question = body.slice(prefix.length).trim();\n      break;\n    }\n  }\n  if (command) break;\n}\n\nif (!command || !question) {\n  return []; // no command → drop message\n}\n\nreturn [{\n  json: {\n    ...($input.first().json),\n    command,\n    question,\n  }\n}];"
+      },
+      "id": "parse-command",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 380]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {"caseSensitive": false, "leftValue": "", "typeValidation": "strict"},
+                "combinator": "and",
+                "conditions": [{"leftValue": "={{ $json.command }}", "rightValue": "apex", "operator": {"type": "string", "operation": "equals"}}]
+              }
+            },
+            {
+              "conditions": {
+                "options": {"caseSensitive": false, "leftValue": "", "typeValidation": "strict"},
+                "combinator": "and",
+                "conditions": [{"leftValue": "={{ $json.command }}", "rightValue": "sentinel", "operator": {"type": "string", "operation": "equals"}}]
+              }
+            },
+            {
+              "conditions": {
+                "options": {"caseSensitive": false, "leftValue": "", "typeValidation": "strict"},
+                "combinator": "and",
+                "conditions": [{"leftValue": "={{ $json.command }}", "rightValue": "cortex", "operator": {"type": "string", "operation": "equals"}}]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-model",
+      "name": "Route to Model",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.APEX_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "question", "value": "={{ $json.question }}"},
+            {"name": "sender", "value": "={{ $json.sender }}"},
+            {"name": "room_id", "value": "={{ $json.room_id }}"},
+            {"name": "room_name", "value": "={{ $json.room_name }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-apex",
+      "name": "Call Apex Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.SENTINEL_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "question", "value": "={{ $json.question }}"},
+            {"name": "sender", "value": "={{ $json.sender }}"},
+            {"name": "room_id", "value": "={{ $json.room_id }}"},
+            {"name": "room_name", "value": "={{ $json.room_name }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-sentinel",
+      "name": "Call Sentinel Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CORTEX_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "question", "value": "={{ $json.question }}"},
+            {"name": "sender", "value": "={{ $json.sender }}"},
+            {"name": "room_id", "value": "={{ $json.room_id }}"},
+            {"name": "room_name", "value": "={{ $json.room_name }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-cortex",
+      "name": "Call Cortex Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const answer = $input.first().json.answer\n  ?? $input.first().json.response\n  ?? $input.first().json.message\n  ?? $input.first().json.output\n  ?? '(no response)';\n\nreturn [{ json: { ...$input.first().json, answer } }];"
+      },
+      "id": "normalize-response",
+      "name": "Normalize Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.MATRIX_BOT_URL }}/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "=Bearer {{ $vars.MATRIX_BOT_TOKEN }}"}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "room_id", "value": "={{ $json.room_id }}"},
+            {"name": "message", "value": "={{ $json.answer }}"},
+            {"name": "msgtype", "value": "m.text"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-reply",
+      "name": "Send Reply via Matrix Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 380]
+    }
+  ],
+  "connections": {
+    "Matrix Message Received": {
+      "main": [[{"node": "Respond 200 immediately", "type": "main", "index": 0}, {"node": "Parse Command", "type": "main", "index": 0}]]
+    },
+    "Parse Command": {
+      "main": [[{"node": "Route to Model", "type": "main", "index": 0}]]
+    },
+    "Route to Model": {
+      "main": [
+        [{"node": "Call Apex Workflow", "type": "main", "index": 0}],
+        [{"node": "Call Sentinel Workflow", "type": "main", "index": 0}],
+        [{"node": "Call Cortex Workflow", "type": "main", "index": 0}]
+      ]
+    },
+    "Call Apex Workflow": {
+      "main": [[{"node": "Normalize Response", "type": "main", "index": 0}]]
+    },
+    "Call Sentinel Workflow": {
+      "main": [[{"node": "Normalize Response", "type": "main", "index": 0}]]
+    },
+    "Call Cortex Workflow": {
+      "main": [[{"node": "Normalize Response", "type": "main", "index": 0}]]
+    },
+    "Normalize Response": {
+      "main": [[{"node": "Send Reply via Matrix Bot", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["matrix", "janeway"],
+  "triggerCount": 1,
+  "variables": {}
+}

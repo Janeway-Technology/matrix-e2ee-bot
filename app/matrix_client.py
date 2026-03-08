@@ -7,10 +7,13 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+import httpx
 from nio import (
     AsyncClient,
     LoginResponse,
     LoginError,
+    MatrixRoom,
+    RoomMessageText,
     RoomSendResponse,
     RoomSendError,
     JoinResponse,
@@ -75,7 +78,7 @@ class MatrixClientManager:
             crypto_store_path=settings.crypto_store_path,
         )
 
-        self._setup_verification_callbacks()
+        self._setup_callbacks()
         await self._login()
         self._save_session()          # persist device_id for next restart
         await self._upload_keys()
@@ -129,20 +132,48 @@ class MatrixClientManager:
     # SAS Verification (bot-initiated — old flow supported by matrix-nio)
     # ------------------------------------------------------------------
 
-    def _setup_verification_callbacks(self) -> None:
-        """Register to-device callbacks for SAS verification.
-
-        New flow (Element sends request → bot sends ready → SAS starts):
-        - UnknownToDeviceEvent catches m.key.verification.ready
-
-        nio automatically handles KeyVerificationAccept and KeyVerificationMac.
-        We handle KeyVerificationKey to log emojis and confirm.
-        """
+    def _setup_callbacks(self) -> None:
+        """Register all event callbacks: room messages and SAS verification."""
         client = self._client
+        # Room message forwarding
+        if self._settings.message_webhook_url:
+            client.add_event_callback(self._on_room_message, RoomMessageText)
+            logger.info("message_webhook_enabled", url=self._settings.message_webhook_url)
+        # SAS verification
         client.add_to_device_callback(self._on_unknown_to_device, UnknownToDeviceEvent)
         client.add_to_device_callback(self._on_verification_key, KeyVerificationKey)
         client.add_to_device_callback(self._on_verification_mac, KeyVerificationMac)
         client.add_to_device_callback(self._on_verification_cancel, KeyVerificationCancel)
+
+    # ------------------------------------------------------------------
+    # Incoming room messages → webhook forward
+    # ------------------------------------------------------------------
+
+    async def _on_room_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
+        """Forward every incoming room message to the configured webhook URL.
+
+        The bot itself is excluded. The receiving service (e.g. n8n) decides
+        whether and how to react — no logic lives here.
+        """
+        if event.sender == self._client.user_id:
+            return
+        asyncio.create_task(self._forward_to_webhook(room, event))
+
+    async def _forward_to_webhook(self, room: MatrixRoom, event: RoomMessageText) -> None:
+        payload = {
+            "room_id": room.room_id,
+            "room_name": room.display_name or room.room_id,
+            "sender": event.sender,
+            "body": event.body,
+            "timestamp": event.server_timestamp,
+            "event_id": event.event_id,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10) as http:
+                resp = await http.post(self._settings.message_webhook_url, json=payload)
+                resp.raise_for_status()
+        except Exception as exc:
+            logger.warning("webhook_forward_failed", error=str(exc), room_id=room.room_id)
 
     async def _on_unknown_to_device(self, event: UnknownToDeviceEvent) -> None:
         """Handle m.key.verification.ready — not a known nio event type."""
