@@ -1,0 +1,12 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+matrix-nio[e2e]==0.25.2
+aiofiles==24.1.0
+python-multipart==0.0.12
+pydantic==2.10.3
+pydantic-settings==2.7.0
+structlog==24.4.0
+anyio==4.7.0
+httpx==0.28.1
+aiosqlite==0.20.0
+cryptography==44.0.0

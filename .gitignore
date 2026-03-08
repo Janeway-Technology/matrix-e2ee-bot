@@ -1,0 +1,30 @@
+# Environment / secrets — never commit
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Crypto store and session data (contains private keys!)
+data/
+*.db
+session.json
+
+# Docker
+*.tar.gz
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
