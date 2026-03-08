@@ -47,7 +47,7 @@ This bot is designed for **self-hosted, trusted environments** (your own server,
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourname/matrix-e2ee-bot.git
+git clone https://github.com/Janeway-Technology/matrix-e2ee-bot.git
 cd matrix-e2ee-bot
 ```
 
