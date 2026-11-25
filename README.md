@@ -1,12 +1,23 @@
-# Matrix E2EE Bot
+<!-- readme-kopf:anfang (erzeugt: dev/readme-kopf.py) -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Janeway-Technology/.github/main/assets/wortmarken/janeway-matrix-e2ee-bot-dunkel.svg">
+    <img alt="Janeway Matrix E2EE Bot" src="https://raw.githubusercontent.com/Janeway-Technology/.github/main/assets/wortmarken/janeway-matrix-e2ee-bot-hell.svg" width="440">
+  </picture>
+</p>
 
-A production-ready Matrix bot microservice with full **End-to-End Encryption (E2EE)**, exposed as a simple REST API. Framework-agnostic — works with n8n, Make.com, curl, or any HTTP client.
+<p align="center"><b>Self-hosted Matrix bot microservice with E2EE and REST API</b></p>
+
+<p align="center"><a href="https://github.com/Janeway-Technology">Janeway Technology</a> › <a href="https://github.com/Janeway-Technology/janeway-sonstige">Sonstige</a> › Matrix E2EE Bot</p>
+<!-- readme-kopf:ende -->
+
+A production-ready Matrix bot microservice with full **End-to-End Encryption (E2EE)**, exposed as a simple REST API. Framework-agnostic, works with n8n, Make.com, curl, or any HTTP client.
 
 ## The Idea
 
 Matrix is one of the few open, federated messaging protocols that supports genuine end-to-end encryption. However, integrating Matrix E2EE into automation workflows (n8n, webhooks, scripts) is painful: every client library requires managing Olm/Megolm crypto state, device verification, key storage, and sync loops.
 
-This project wraps all of that complexity into a single **self-hosted Docker container** with a dead-simple REST API. Your automation tool just calls `POST /send` with a room ID and message — the bot handles encryption, key management, and Matrix protocol details transparently.
+This project wraps all of that complexity into a single **self-hosted Docker container** with a dead-simple REST API. Your automation tool just calls `POST /send` with a room ID and message, the bot handles encryption, key management, and Matrix protocol details transparently.
 
 **Use cases:**
 - Send encrypted alerts from monitoring systems (Grafana, Prometheus, Checkmk)
@@ -19,18 +30,18 @@ This project wraps all of that complexity into a single **self-hosted Docker con
 ## Security
 
 ### What this protects
-- **End-to-end encrypted messages** using the Matrix Megolm protocol — the homeserver operator cannot read message content
-- **Device verification via SAS** (Short Authentication String / emoji comparison) — proves the bot's identity cryptographically and prevents MITM attacks
-- **Stable device identity** — the bot's Olm identity key is generated once and persisted in a Docker volume; it never changes across restarts, so re-verification is not needed after updates
-- **API authentication** via Bearer token — all write endpoints require a secret token
+- **End-to-end encrypted messages** using the Matrix Megolm protocol, the homeserver operator cannot read message content
+- **Device verification via SAS** (Short Authentication String / emoji comparison), proves the bot's identity cryptographically and prevents MITM attacks
+- **Stable device identity**: the bot's Olm identity key is generated once and persisted in a Docker volume; it never changes across restarts, so re-verification is not needed after updates
+- **API authentication** via Bearer token: all write endpoints require a secret token
 
 ### What this does NOT protect
-- **Metadata**: the homeserver sees who talks to whom, room membership, and timestamps — only message content is encrypted
-- **The API endpoint itself** is plain HTTP by default — run it behind a reverse proxy with TLS if exposed beyond localhost
-- **The Bearer token** is symmetric — keep it secret and rotate it if compromised
+- **Metadata**: the homeserver sees who talks to whom, room membership, and timestamps, only message content is encrypted
+- **The API endpoint itself** is plain HTTP by default, run it behind a reverse proxy with TLS if exposed beyond localhost
+- **The Bearer token** is symmetric: keep it secret and rotate it if compromised
 
 ### Threat model
-This bot is designed for **self-hosted, trusted environments** (your own server, private Docker stack). The REST API should never be exposed to the public internet without TLS and network-level access control. The crypto store volume contains your device's private keys — back it up and protect it like a password.
+This bot is designed for **self-hosted, trusted environments** (your own server, private Docker stack). The REST API should never be exposed to the public internet without TLS and network-level access control. The crypto store volume contains your device's private keys, back it up and protect it like a password.
 
 ---
 
@@ -65,7 +76,7 @@ Fill in at minimum:
 | `MATRIX_HOMESERVER` | Your homeserver URL, e.g. `https://matrix.example.com` |
 | `MATRIX_USER` | Bot account Matrix ID, e.g. `@bot:example.com` |
 | `MATRIX_PASSWORD` | Bot account password (or use `MATRIX_ACCESS_TOKEN`) |
-| `API_BEARER_TOKEN` | A strong random secret — used to authenticate all API calls |
+| `API_BEARER_TOKEN` | A strong random secret, used to authenticate all API calls |
 
 ### 3. Start
 
@@ -92,7 +103,7 @@ curl http://localhost:5001/health
 
 ### 4. Verify the bot's device (one-time, strongly recommended)
 
-Device verification proves the bot is who it claims to be. You only need to do this once — the verification state persists across container restarts.
+Device verification proves the bot is who it claims to be. You only need to do this once, the verification state persists across container restarts.
 
 **Step 1:** Find the bot's device ID (shown in the `/health` response, or via the devices endpoint):
 
@@ -119,7 +130,7 @@ curl -X POST http://localhost:5001/verify-device \
 docker logs matrix-e2ee-bot --follow
 ```
 
-**Step 5:** If the emojis match, click **They match** in Element. The bot confirms automatically — both devices are now verified.
+**Step 5:** If the emojis match, click **They match** in Element. The bot confirms automatically, both devices are now verified.
 
 ---
 
@@ -127,13 +138,13 @@ docker logs matrix-e2ee-bot --follow
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `MATRIX_HOMESERVER` | yes | — | e.g. `https://matrix.example.com` |
-| `MATRIX_USER` | yes | — | e.g. `@bot:example.com` |
-| `MATRIX_PASSWORD` | one of | — | Bot account password |
-| `MATRIX_ACCESS_TOKEN` | one of | — | Pre-existing access token (alternative to password) |
+| `MATRIX_HOMESERVER` | yes |, | e.g. `https://matrix.example.com` |
+| `MATRIX_USER` | yes |, | e.g. `@bot:example.com` |
+| `MATRIX_PASSWORD` | one of |, | Bot account password |
+| `MATRIX_ACCESS_TOKEN` | one of |, | Pre-existing access token (alternative to password) |
 | `BOT_DISPLAY_NAME` | no | `Matrix Bot` | Display name shown in rooms |
 | `BOT_DEVICE_ID` | no | auto | Fix the device ID (useful for stable verification) |
-| `API_BEARER_TOKEN` | yes | — | Secret token for API auth — never commit this |
+| `API_BEARER_TOKEN` | yes |, | Secret token for API auth, never commit this |
 | `CRYPTO_STORE_PATH` | no | `/app/data/crypto_store` | Path to the Olm/Megolm key database |
 | `LOG_LEVEL` | no | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 | `SYNC_INTERVAL` | no | `30` | Background sync interval in seconds |
@@ -237,7 +248,7 @@ curl -X POST http://localhost:5001/create-room \
 | `name` | yes | Room display name |
 | `topic` | no | Room topic |
 | `invite` | no | List of Matrix IDs to invite on creation |
-| `encrypted` | no | `true` (default) — enable E2EE from the start |
+| `encrypted` | no | `true` (default), enable E2EE from the start |
 
 ```json
 {"status": "created", "room_id": "!xyz:example.com"}
@@ -344,7 +355,7 @@ curl -X POST http://localhost:5001/verify-device \
 4. Emojis appear in `docker logs` AND in Element simultaneously
 5. User clicks **They match** in Element → Element sends its MAC
 6. Bot auto-confirms, sends its MAC + `m.key.verification.done`
-7. Verification complete — device is marked trusted in the crypto store
+7. Verification complete: device is marked trusted in the crypto store
 
 ---
 
@@ -398,7 +409,7 @@ The Docker volume `crypto_store` contains:
 
 | File | Purpose |
 |---|---|
-| `session.json` | Saved device ID — ensures stable identity across restarts |
+| `session.json` | Saved device ID, ensures stable identity across restarts |
 | `crypto_store/*.db` | Olm device keys, Megolm sessions, sync tokens |
 
 **Do not delete this volume** unless you want to reset the bot's identity and re-verify all devices.
